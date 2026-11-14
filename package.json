@@ -1,0 +1,12 @@
+{
+  "name": "loupe",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "checks:dev": "cd services/checks && uv run uvicorn loupe_checks.main:app --reload --port 8100"
+  }
+}

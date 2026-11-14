@@ -1,0 +1,45 @@
+/* Loupe design tokens — spec §9.2. The page is a light table, not paper. */
+:root {
+  --table:        #E4E9EC;
+  --frame:        #FFFFFF;
+  --frame-dim:    #F2F5F6;
+  --rule:         #B6C1C8;
+
+  --ink:          #17212B;
+  --ink-soft:     #51606D;
+
+  /* Verdict colours: print registration inks. Always paired with icon + word. */
+  --authentic:    #00828F;
+  --uncertain:    #F0B400;
+  --manipulated:  #D6195B;
+
+  --focus:        #2B4EFF;
+
+  --frame-size:   clamp(148px, 22vw, 220px);
+  --gap:          12px;
+  --radius:       2px;
+
+  /* Type scale, 1.25 ratio */
+  --t-13: 13px; --t-16: 16px; --t-20: 20px; --t-25: 25px;
+  --t-31: 31px; --t-39: 39px; --t-61: 61px;
+
+  --develop-ms: 750ms;
+}
+
+:root[data-theme="dark"] {
+  --table: #10171D; --frame: #1A242D; --frame-dim: #141C23; --rule: #33424F;
+  --ink: #E8EEF2;  --ink-soft: #9AAAB6;
+  --authentic: #3CC3CF; --uncertain: #FFC933; --manipulated: #FF5C93;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --table: #10171D; --frame: #1A242D; --frame-dim: #141C23; --rule: #33424F;
+    --ink: #E8EEF2;  --ink-soft: #9AAAB6;
+    --authentic: #3CC3CF; --uncertain: #FFC933; --manipulated: #FF5C93;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --develop-ms: 150ms; }
+}

@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+  - packages/*
+allowBuilds:
+  sharp: true
+  unrs-resolver: false
+minimumReleaseAgeExclude:
+  - '@neondatabase/serverless@1.2.1'
+  - '@vercel/functions@3.11.3'
+  - framer-motion@14.14.0
+  - motion-dom@14.14.0
+  - motion@14.14.0

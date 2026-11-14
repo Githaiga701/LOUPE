@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "loupe_checks/main.py": {
+      "maxDuration": 60,
+      "memory": 1769,
+      "excludeFiles": "{tests/**,**/*.test.py,**/test_*.py,.venv/**}"
+    }
+  }
+}
