@@ -11,6 +11,8 @@ export const env = {
   get CHECKS_URL() { return process.env.CHECKS_URL ?? "http://localhost:8100"; },
   /** Shared secret both projects hold; sent as X-Loupe-Key. */
   get CHECKS_SHARED_SECRET() { return process.env.CHECKS_SHARED_SECRET ?? "dev-secret"; },
+  /** Vercel "Protection Bypass for Automation" secret of the checks project, if it sits behind Vercel Authentication. */
+  get CHECKS_BYPASS_SECRET() { return process.env.CHECKS_BYPASS_SECRET; },
   /** "fake" streams synthetic signals so the UI can be built without the checks service. */
   get CHECKS_MODE(): "live" | "fake" { return process.env.CHECKS_MODE === "fake" ? "fake" : "live"; },
   get RETENTION_HOURS_ANON() { return Number(process.env.RETENTION_HOURS_ANON ?? 24); },

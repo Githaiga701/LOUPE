@@ -16,7 +16,11 @@ export async function runCheck(req: CheckRequest): Promise<Signal> {
   const path = req.check_id.replace(/\./g, "/"); // image.exif -> /v1/checks/image/exif
   const res = await fetch(`${env.CHECKS_URL}/v1/checks/${path}`, {
     method: "POST",
-    headers: { "content-type": "application/json", "x-loupe-key": env.CHECKS_SHARED_SECRET },
+    headers: {
+      "content-type": "application/json",
+      "x-loupe-key": env.CHECKS_SHARED_SECRET,
+      ...(env.CHECKS_BYPASS_SECRET ? { "x-vercel-protection-bypass": env.CHECKS_BYPASS_SECRET } : {}),
+    },
     body: JSON.stringify(req),
     signal: AbortSignal.timeout(timeoutMs),
   });
