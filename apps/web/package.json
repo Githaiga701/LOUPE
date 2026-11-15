@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test:scoring": "node --experimental-strip-types --no-warnings scripts/aggregate-cases.mts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:migrate:prod": "VERCEL_ENV=production node scripts/migrate.mjs",

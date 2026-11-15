@@ -107,17 +107,26 @@ export function aggregate(signals: Signal[], priorLimits: string[] = []): Aggreg
   // out of the inconclusive band. "Likely authentic" needs a strong pass (signed
   // origin) or a detector/context signal; "likely manipulated" needs a strong or
   // medium flag.
-  const strongPass = signals.some(
-    (s) => s.status === "pass" && (s.weight === "strong" || (s.weight === "medium" && (s.category === "detector" || s.category === "context"))),
-  );
-  const strongFlag = signals.some((s) => (s.status === "fail" || s.status === "warn") && s.weight !== "weak");
+  // A single detector never decides: it needs a second independent one agreeing.
+  const detectorPasses = signals.filter((s) => s.category === "detector" && s.status === "pass").length;
+  const detectorFails = signals.filter((s) => s.category === "detector" && s.status === "fail").length;
+  const strongPass =
+    signals.some((s) => s.status === "pass" && (s.weight === "strong" || (s.weight === "medium" && s.category === "context"))) ||
+    detectorPasses >= 2;
+  const strongFlag =
+    signals.some((s) => (s.status === "fail" || s.status === "warn") && s.weight !== "weak" && s.category !== "detector") ||
+    detectorFails >= 2;
   if (p > BAND[1] && !strongPass) {
     p = BAND[1] - 0.01;
-    limits.push("Only file and metadata checks passed. They cannot tell a camera photo from a generated or edited image, so the result stays inconclusive.");
+    limits.push(detectorPasses === 1
+      ? "Only one detector produced a clear result. One detector alone is not enough to call an image authentic, so the result stays inconclusive."
+      : "Only file and metadata checks passed. They cannot tell a camera photo from a generated or edited image, so the result stays inconclusive.");
   }
   if (p < BAND[0] && !strongFlag) {
     p = BAND[0] + 0.01;
-    limits.push("Only weak checks raised concerns. That is not enough to call the image manipulated.");
+    limits.push(detectorFails === 1
+      ? "Only one detector flagged this image. One detector alone is not enough to call it manipulated."
+      : "Only weak checks raised concerns. That is not enough to call the image manipulated.");
   }
 
   return finish(p, signals, limits);

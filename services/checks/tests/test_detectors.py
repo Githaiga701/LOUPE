@@ -97,11 +97,34 @@ async def test_hive_deepfake_flag_on_otherwise_clean_image(monkeypatch, jpg):
     assert s.status == "warn" and "deepfake" in s.plain
 
 
-async def test_hive_bad_key(monkeypatch, jpg):
+async def test_hive_bad_key_both_versions(monkeypatch, jpg):
     monkeypatch.setenv("HIVE_API_KEY", "k")
-    mock_vendor(monkeypatch, lambda r: httpx.Response(401, text="Unauthorized"))
+    calls = []
+
+    def handler(r):
+        calls.append((str(r.url), r.headers.get("authorization")))
+        return httpx.Response(401, json={"status_code": 401, "message": "Invalid or expired token"})
+
+    mock_vendor(monkeypatch, handler)
     s = await registry.run("image.detector.hive", jpg, req("image.detector.hive"))
     assert s.status == "not_run" and "credentials" in s.plain
+    assert "Secret Key" in s.detail["hint"]
+    assert calls == [(detectors.HIVE_URL, "Bearer k"), (detectors.HIVE_V2_URL, "Token k")]
+
+
+async def test_hive_v2_fallback(monkeypatch, jpg):
+    monkeypatch.setenv("HIVE_API_KEY", "k")
+
+    def handler(r):
+        if "v3" in str(r.url):
+            return httpx.Response(401, json={"message": "Invalid or expired token"})
+        return httpx.Response(200, json={"id": "v2task", "status": [{"status": {"code": "0"}, "response": {"output": [{"classes": [
+            {"class": "not_ai_generated", "score": 0.02}, {"class": "ai_generated", "score": 0.98},
+            {"class": "dalle", "score": 0.7}, {"class": "deepfake", "score": 0.01}]}]}}]})
+
+    mock_vendor(monkeypatch, handler)
+    s = await registry.run("image.detector.hive", jpg, req("image.detector.hive"))
+    assert s.status == "fail" and s.detail["api"] == "v2" and "dalle" in s.plain
 
 
 def test_http_route_handles_dotted_ids(monkeypatch, jpg):

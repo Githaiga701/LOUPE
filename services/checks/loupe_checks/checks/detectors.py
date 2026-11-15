@@ -94,33 +94,58 @@ HIVE_NON_GENERATOR = {"ai_generated", "not_ai_generated", "deepfake", "not_deepf
                       "ai_generated_audio", "not_ai_generated_audio", "inconclusive", "inconclusive_video"}
 
 
+HIVE_V2_URL = "https://api.thehive.ai/api/v2/task/sync"
+
+
+async def _hive_call(key: str, path: Path, req: CheckRequest) -> tuple[int, dict | None, str, str]:
+    """Try the v3 endpoint (Bearer secret key); on 401 fall back to v2 (Token project key).
+    Returns (status, classes or None, raw text, api version)."""
+    files = {"media": (path.name + _ext(req), path.read_bytes(), req.content_type or "application/octet-stream")}
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        r = await client.post(HIVE_URL, headers={"authorization": f"Bearer {key}"}, files=files)
+        if r.status_code == 200:
+            body = r.json()
+            try:
+                return 200, {"_body": body, **{c["class"]: float(c["value"]) for c in body["output"][0]["classes"]}}, r.text, "v3"
+            except (KeyError, IndexError, TypeError):
+                return 200, None, "unexpected v3 response shape", "v3"
+        if r.status_code != 401:
+            return r.status_code, None, r.text, "v3"
+        r2 = await client.post(HIVE_V2_URL, headers={"authorization": f"Token {key}"}, files=files)
+        if r2.status_code != 200:
+            return r2.status_code, None, r2.text, "v2"
+        body = r2.json()
+        try:
+            out = body["status"][0]["response"]["output"][0]["classes"]
+            return 200, {"_body": body, **{c["class"]: float(c["score"]) for c in out}}, r2.text, "v2"
+        except (KeyError, IndexError, TypeError):
+            return 200, None, "unexpected v2 response shape", "v2"
+
+
 @check(HIVE_ID)
 async def hive(path: Path, req: CheckRequest) -> Signal:
     key = os.environ.get("HIVE_API_KEY")
     if not key:
         return _not_run(HIVE_ID, HIVE_TITLE, "This detector isn't connected yet.", configured=False)
     try:
-        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
-            r = await client.post(
-                HIVE_URL,
-                headers={"authorization": f"Bearer {key}"},
-                files={"media": (path.name + _ext(req), path.read_bytes(), req.content_type or "application/octet-stream")},
-            )
+        status, classes, raw, api = await _hive_call(key, path, req)
     except httpx.HTTPError as e:
         return _vendor_error(HIVE_ID, HIVE_TITLE, "Hive", None, type(e).__name__)
-    if r.status_code != 200:
-        return _vendor_error(HIVE_ID, HIVE_TITLE, "Hive", r.status_code, r.text)
-    body = r.json()
-    try:
-        classes = {c["class"]: float(c["value"]) for c in body["output"][0]["classes"]}
-    except (KeyError, IndexError, TypeError):
-        return _vendor_error(HIVE_ID, HIVE_TITLE, "Hive", r.status_code, "unexpected response shape")
+    if classes is None:
+        sig = _vendor_error(HIVE_ID, HIVE_TITLE, "Hive", status, raw)
+        if status in (401, 403):
+            sig.detail["hint"] = ("Hive rejected the key on both the v3 (Bearer) and v2 (Token) endpoints. "
+                                  "In the Hive dashboard, open the project's API keys and copy the Secret Key "
+                                  "(not the Access Key ID) into HIVE_API_KEY.")
+        return sig
 
+    body = classes.pop("_body")
     p_ai = classes.get("ai_generated", 0.0)
     gens = {k: round(v, 3) for k, v in classes.items() if k not in HIVE_NON_GENERATOR and v >= 0.05}
     top_gen = max(gens, key=gens.get) if gens else None
-    extra = {"deepfake": round(classes.get("deepfake", 0.0), 4), "generators": gens, "task_id": body.get("task_id")}
-    sig = _from_score(HIVE_ID, HIVE_TITLE, "Hive", p_ai, Tool(name=f"hive/{body.get('model', 'ai-generated-and-deepfake-content-detection')}", version="v3"), extra)
+    extra = {"deepfake": round(classes.get("deepfake", 0.0), 4), "generators": gens,
+             "task_id": body.get("task_id") or body.get("id"), "api": api}
+    sig = _from_score(HIVE_ID, HIVE_TITLE, "Hive", p_ai, Tool(name="hive/ai-generated-and-deepfake-content-detection", version=api), extra)
     if sig.status == "fail" and top_gen and gens[top_gen] >= 0.5:
         sig.plain += f" It most resembles output from {top_gen}."
     if classes.get("deepfake", 0.0) >= AI_FAIL_AT and sig.status != "fail":

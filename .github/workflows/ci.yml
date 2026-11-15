@@ -12,6 +12,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r typecheck
       - run: pnpm -r lint
+      - run: pnpm --filter web test:scoring
       - run: pnpm --filter web build
         env: { DATABASE_URL: "postgresql://x:y@localhost/z", BLOB_READ_WRITE_TOKEN: "x" }
   checks:
