@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   const run = await start(analyzeWorkflow, [{
     jobId,
     mediaType: "image",
-    blobUrl: upload.blobUrl,
+    blobPathname: upload.blobPathname,
     contentType: upload.contentType ?? undefined,
     sizeBytes: upload.sizeBytes ?? undefined,
   }]);

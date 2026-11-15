@@ -6,6 +6,7 @@ import { runCheck, notRunSignal } from "@/lib/checks-client";
 import { aggregate } from "@/lib/aggregate";
 import { db, schema } from "@/lib/db";
 import { newId } from "@/lib/ids";
+import { signedReadUrl } from "@/lib/blob-sign";
 
 /**
  * The analysis pipeline as a durable workflow (spec §6).
@@ -20,7 +21,8 @@ import { newId } from "@/lib/ids";
 export interface AnalyzeInput {
   jobId: string;
   mediaType: MediaType;
-  blobUrl: string;
+  /** Private Blob pathname of the original. The checks service gets a short-lived signed URL, never the token. */
+  blobPathname: string;
   contentType?: string;
   sizeBytes?: number;
 }
@@ -30,9 +32,10 @@ export async function analyzeWorkflow(input: AnalyzeInput) {
 
   const plan = checksFor(input.mediaType);
   await emitPlan(input.jobId, plan);
+  const fileUrl = await signFile(input.blobPathname);
 
   // Cheap/deterministic first, but run in parallel; order of completion is real.
-  const signals = await Promise.all(plan.map((c) => runOneCheck(input, c.id)));
+  const signals = await Promise.all(plan.map((c) => runOneCheck(input, fileUrl, c.id)));
 
   const reportId = await finalise(input, signals);
   return { reportId };
@@ -47,7 +50,12 @@ async function emitPlan(jobId: string, checks: ReturnType<typeof checksFor>) {
   await emit({ type: "plan", job_id: jobId, checks });
 }
 
-async function runOneCheck(input: AnalyzeInput, checkId: string): Promise<Signal> {
+async function signFile(pathname: string): Promise<string> {
+  "use step";
+  return signedReadUrl(pathname);
+}
+
+async function runOneCheck(input: AnalyzeInput, fileUrl: string, checkId: string): Promise<Signal> {
   "use step";
   await emit({ type: "stage_started", check_id: checkId });
   let signal: Signal;
@@ -56,7 +64,7 @@ async function runOneCheck(input: AnalyzeInput, checkId: string): Promise<Signal
       job_id: input.jobId,
       check_id: checkId,
       media_type: input.mediaType,
-      blob_url: input.blobUrl,
+      blob_url: fileUrl,
       content_type: input.contentType,
       size_bytes: input.sizeBytes,
     });

@@ -28,7 +28,7 @@ apps/web/                 Next.js app (UI, API routes, workflow)
   lib/                    checks registry, aggregate (scoring), db (drizzle), checks-client (adapter)
   workflows/analyze.ts    the pipeline
 packages/schema/          Signal, Verdict, Report, JobEvent (Zod)
-services/checks/          Python checks service (FastAPI); tests/
+services/checks/          Python checks service (FastAPI); receives a signed per-file URL, never a Blob token
 docs/                     spec, decisions, privacy (to write before launch)
 eval/                     your own labelled evaluation set + results (start on day one)
 infra/compose.yml         local Postgres
@@ -71,9 +71,9 @@ Two Vercel projects from this one repo:
    - Settings → Environment Variables → tick **Enable access to System Environment Variables** (the Workflow SDK needs `VERCEL_DEPLOYMENT_ID`).
    - Add `CHECKS_URL`, `CHECKS_SHARED_SECRET`, `CRON_SECRET`.
 2. **loupe-checks** (Python): Root Directory `services/checks`, framework "Other".
-   - Add `LOUPE_SHARED_SECRET` (same value as `CHECKS_SHARED_SECRET`) and the same `BLOB_READ_WRITE_TOKEN` so it can read private uploads.
+   - Add `LOUPE_SHARED_SECRET` (same value as `CHECKS_SHARED_SECRET`). No Blob token: each job passes a 20-minute signed URL for one file.
 
-Run `pnpm db:migrate` (or `db:push` for now) against the Neon database once.
+Production builds apply `apps/web/drizzle/` migrations automatically (`scripts/migrate.mjs`); preview builds never migrate.
 
 ## Tests
 

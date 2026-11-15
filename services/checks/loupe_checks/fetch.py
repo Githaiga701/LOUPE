@@ -36,23 +36,7 @@ async def fetch_to_tmp(url: str) -> Path:
 
 
 async def _download(url: str) -> bytes:
-    token = os.environ.get("BLOB_READ_WRITE_TOKEN")
-    # Private Vercel Blob stores need the SDK (signed access); public URLs are plain GETs.
-    if token and "blob.vercel-storage.com" in url:
-        try:
-            from vercel import blob  # type: ignore
-
-            result = await blob.get_blob(url, access="private")  # type: ignore[attr-defined]
-            body = result.body
-            data = body if isinstance(body, (bytes, bytearray)) else await body.read()
-            if len(data) > MAX_BYTES:
-                raise TooLarge()
-            return bytes(data)
-        except TooLarge:
-            raise
-        except Exception:
-            pass  # fall through to a plain fetch (public store or SDK mismatch)
-
+    """Plain capped GET. The web app passes a short-lived signed URL scoped to one file."""
     async with httpx.AsyncClient(timeout=30, follow_redirects=True, max_redirects=3) as client:
         async with client.stream("GET", url) as r:
             r.raise_for_status()

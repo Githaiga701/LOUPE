@@ -12,7 +12,6 @@ dependencies = [
   "imagehash>=4.3",
   "numpy>=2",
   "c2pa-python>=0.37",
-  "vercel>=0.10",
 ]
 
 [project.optional-dependencies]
