@@ -78,6 +78,24 @@ export function aggregate(signals: Signal[], priorLimits: string[] = []): Aggreg
     p = 0.5 + (p - 0.5) * 0.6;
   }
 
+  // Weak checks and metadata can't separate a camera photo from a generated or
+  // edited one (metadata is trivially copied), so they may never move the result
+  // out of the inconclusive band. "Likely authentic" needs a strong pass (signed
+  // origin) or a detector/context signal; "likely manipulated" needs a strong or
+  // medium flag.
+  const strongPass = signals.some(
+    (s) => s.status === "pass" && (s.weight === "strong" || (s.weight === "medium" && (s.category === "detector" || s.category === "context"))),
+  );
+  const strongFlag = signals.some((s) => (s.status === "fail" || s.status === "warn") && s.weight !== "weak");
+  if (p > BAND[1] && !strongPass) {
+    p = BAND[1] - 0.01;
+    limits.push("Only file and metadata checks passed. They cannot tell a camera photo from a generated or edited image, so the result stays inconclusive.");
+  }
+  if (p < BAND[0] && !strongFlag) {
+    p = BAND[0] + 0.01;
+    limits.push("Only weak checks raised concerns. That is not enough to call the image manipulated.");
+  }
+
   return finish(p, signals, limits);
 }
 
