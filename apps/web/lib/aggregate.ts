@@ -48,7 +48,9 @@ export function aggregate(signals: Signal[], priorLimits: string[] = []): Aggreg
     }
   }
   const ran = signals.filter((s) => s.status !== "not_run" && s.status !== "error").length;
-  const notRun = signals.length - ran;
+  // Services that aren't connected yet are a product gap, not a failure on this file.
+  const notConnected = signals.filter((s) => s.status === "not_run" && s.detail?.configured === false).length;
+  const notRun = signals.length - ran - notConnected;
   if (signals.length > 0 && ran === 0) {
     // Spec §9.8: say so plainly instead of dressing up an empty result as "inconclusive, 50%".
     return {
@@ -62,10 +64,32 @@ export function aggregate(signals: Signal[], priorLimits: string[] = []): Aggreg
     };
   }
   if (notRun > 0) limits.push(`${notRun} of ${signals.length} checks did not run. The result rests on fewer signals than usual.`);
+  if (!signals.some((s) => s.category === "detector" && (s.status === "pass" || s.status === "fail" || s.status === "warn"))) {
+    limits.push("No AI-generation detector produced a result for this file.");
+  }
 
   // Logistic squash around zero; k chosen so 2 strong passes ≈ 0.8.
   const k = 0.55;
   let p = evidence === 0 ? 0.5 : 1 / (1 + Math.exp(-k * score));
+
+  // --- 2b. Detector consensus ------------------------------------------------
+  // Weak file checks must not cancel out two independent detectors that agree,
+  // and a disagreement must read as "no answer", not as a lean either way.
+  const decided = signals.filter((s) => s.category === "detector" && (s.status === "pass" || s.status === "fail"));
+  if (decided.length >= 2) {
+    const allFail = decided.every((s) => s.status === "fail");
+    const allPass = decided.every((s) => s.status === "pass");
+    if (allFail) {
+      p = Math.min(p, 0.28);
+      limits.push("Two independent detectors agree this looks AI-generated. Detectors are sometimes wrong on real photos, so check the other frames before acting on it.");
+    } else if (allPass) {
+      p = Math.min(Math.max(p, 0.72), 0.8);
+      limits.push("Detectors look for AI generation. They do not rule out editing, cropping or a misleading caption.");
+    } else {
+      p = 0.5 + (p - 0.5) * 0.3;
+      limits.push("The two detectors disagree, so their results cancel out.");
+    }
+  }
 
   // --- 3. Confidence dampers -------------------------------------------------
   const ingest = by("image.ingest");

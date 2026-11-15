@@ -12,6 +12,10 @@ export const CHECKS: CheckDescriptor[] = [
   { id: "image.generator_tags", category: "provenance", title: "AI generator tags", media_types: ["image"], timeout_s: 10 },
   { id: "image.ela", category: "forensics", title: "Error level analysis", media_types: ["image"], timeout_s: 30 },
   { id: "image.jpeg_quant", category: "forensics", title: "JPEG compression history", media_types: ["image"], timeout_s: 15 },
+  // Detectors last (spec §6): two independent vendors; disagreement lowers confidence.
+  { id: "image.detector.sightengine", category: "detector", title: "Detector A (Sightengine)", media_types: ["image"], timeout_s: 30 },
+  { id: "image.detector.hive", category: "detector", title: "Detector B (Hive)", media_types: ["image"], timeout_s: 30 },
+  { id: "image.reverse_search", category: "context", title: "Earlier copies", media_types: ["image"], timeout_s: 30 },
 ];
 
 export function checksFor(media: MediaType): CheckDescriptor[] {

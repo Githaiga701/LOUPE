@@ -11,6 +11,9 @@ const WHY: Record<string, string> = {
   "image.generator_tags": "Many AI generators label their output in metadata. A label is strong evidence; its absence proves nothing.",
   "image.ela": "Error level analysis highlights regions saved a different number of times, which can reveal pasted-in content.",
   "image.jpeg_quant": "A JPEG saved twice carries traces of both saves. Mismatched tables suggest the image was opened and re-saved by an editor.",
+  "image.detector.sightengine": "A model trained on real and AI-generated images. Loupe runs two independent detectors; when they disagree, the result is inconclusive.",
+  "image.detector.hive": "A second, independent model, which also estimates which generator may have produced the image and whether faces were swapped.",
+  "image.reverse_search": "Finding the earliest copy of an image often settles more than any pixel check: an old photo reposted with a new caption is the most common kind of fake.",
 };
 const RELIABILITY: Record<string, string> = {
   "image.ingest": "Reliable for what the file is; the recompression guess is a heuristic.",
@@ -19,6 +22,9 @@ const RELIABILITY: Record<string, string> = {
   "image.generator_tags": "Reliable when a tag is present. Tags are often removed by messaging apps.",
   "image.ela": "Experimental. Heavy recompression produces false alarms.",
   "image.jpeg_quant": "Moderate. Some apps re-save every image, which looks the same as editing.",
+  "image.detector.sightengine": "Useful but fallible. Independent audits in 2026 found leading detectors often call real photos fake, so a single detector never decides the verdict.",
+  "image.detector.hive": "Useful but fallible, for the same reason. Recompressed or screenshotted images are harder for every detector.",
+  "image.reverse_search": "Reliable at finding exact and near copies; it cannot find images that were never posted publicly.",
 };
 
 /**

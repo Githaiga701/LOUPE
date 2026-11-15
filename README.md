@@ -85,5 +85,5 @@ cd services/checks && uv run pytest
 ## Phase status
 
 - [x] Phase 0: repo, schema, tokens, Frame / Develop button / Verdict plate, workflow streaming real signals to the grid
-- [ ] Phase 1: images — reverse search adapter, two detector adapters, calibration from `eval/`, retention tested end to end
+- [~] Phase 1: images — two detector adapters (Sightengine, Hive) live; reverse search slot awaiting a TinEye key; calibration from `eval/` next
 - [ ] Phase 2: documents · Phase 3: claims + WhatsApp · Phase 4: audio/video (GPU adapter) · Phase 5: accounts, API keys, teams

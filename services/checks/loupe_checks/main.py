@@ -16,7 +16,7 @@ import traceback
 from fastapi import Depends, FastAPI, Header, HTTPException
 
 from . import registry
-from .checks import image  # noqa: F401  (registers image checks)
+from .checks import detectors, image  # noqa: F401  (registers checks)
 from .fetch import TooLarge, fetch_to_tmp
 from .schemas import CheckRequest, Signal
 
@@ -40,9 +40,10 @@ async def list_checks() -> dict:
 
 
 # exclude_none: the TS schema uses optional (absent), not nullable, for unset fields.
-@app.post("/v1/checks/{media}/{check}", dependencies=[Depends(require_key)], response_model=Signal, response_model_exclude_none=True)
+@app.post("/v1/checks/{media}/{check:path}", dependencies=[Depends(require_key)], response_model=Signal, response_model_exclude_none=True)
 async def run_check(media: str, check: str, req: CheckRequest) -> Signal:
-    check_id = f"{media}.{check}"
+    # image/detector/hive -> image.detector.hive
+    check_id = f"{media}.{check.replace('/', '.')}"
     if check_id != req.check_id:
         raise HTTPException(status_code=400, detail="check_id in body does not match path")
     if registry.get(check_id) is None:
