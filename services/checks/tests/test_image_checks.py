@@ -87,3 +87,32 @@ def _blank_jpeg() -> Path:
     p = Path(tempfile.mkdtemp()) / "b.jpg"
     Image.new("RGB", (64, 64), "white").save(p, "JPEG")
     return p
+
+
+def test_http_response_has_no_nulls(tmp_path):
+    """Contract with packages/schema: optional fields are omitted, never null (Zod .optional() rejects null)."""
+    from fastapi.testclient import TestClient
+    import loupe_checks.main as m
+
+    img = tmp_path / "w.jpg"
+    Image.new("RGB", (64, 64), "white").save(img, "JPEG")
+
+    async def fake_fetch(url):
+        return img
+
+    original = m.fetch_to_tmp
+    m.fetch_to_tmp = fake_fetch
+    try:
+        client = TestClient(m.app)
+        for cid in ("image.ingest", "image.exif", "image.c2pa", "image.generator_tags", "image.ela", "image.jpeg_quant"):
+            media, name = cid.split(".", 1)
+            r = client.post(f"/v1/checks/{media}/{name}",
+                            json={"job_id": "j", "check_id": cid, "media_type": "image", "blob_url": "https://e.com/x"},
+                            headers={"x-loupe-key": "dev-secret"})
+            assert r.status_code == 200, r.text
+            body = r.json()
+            assert None not in body.values(), f"{cid} returned nulls: {[k for k, v in body.items() if v is None]}"
+            if body.get("tool"):
+                assert None not in body["tool"].values()
+    finally:
+        m.fetch_to_tmp = original

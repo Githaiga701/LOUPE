@@ -49,6 +49,18 @@ export function aggregate(signals: Signal[], priorLimits: string[] = []): Aggreg
   }
   const ran = signals.filter((s) => s.status !== "not_run" && s.status !== "error").length;
   const notRun = signals.length - ran;
+  if (signals.length > 0 && ran === 0) {
+    // Spec §9.8: say so plainly instead of dressing up an empty result as "inconclusive, 50%".
+    return {
+      verdict: {
+        label: "inconclusive",
+        confidence: 0.5,
+        summary: "None of the checks could run, so there is no evidence either way. This is a problem on our side, not a finding about your file.",
+        next_steps: ["Try again in a minute."],
+      },
+      limits: [...limits, "No checks produced a result."],
+    };
+  }
   if (notRun > 0) limits.push(`${notRun} of ${signals.length} checks did not run. The result rests on fewer signals than usual.`);
 
   // Logistic squash around zero; k chosen so 2 strong passes ≈ 0.8.

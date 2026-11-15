@@ -39,7 +39,8 @@ async def list_checks() -> dict:
     return {"checks": registry.all_ids()}
 
 
-@app.post("/v1/checks/{media}/{check}", dependencies=[Depends(require_key)], response_model=Signal)
+# exclude_none: the TS schema uses optional (absent), not nullable, for unset fields.
+@app.post("/v1/checks/{media}/{check}", dependencies=[Depends(require_key)], response_model=Signal, response_model_exclude_none=True)
 async def run_check(media: str, check: str, req: CheckRequest) -> Signal:
     check_id = f"{media}.{check}"
     if check_id != req.check_id:

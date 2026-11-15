@@ -69,6 +69,7 @@ async function runOneCheck(input: AnalyzeInput, fileUrl: string, checkId: string
       size_bytes: input.sizeBytes,
     });
   } catch (err) {
+    console.error(`[analyze] ${input.jobId} ${checkId} failed:`, err instanceof Error ? err.message : err);
     const reason = err instanceof Error && err.name === "TimeoutError"
       ? "This check took too long and was skipped."
       : "This check could not run.";
